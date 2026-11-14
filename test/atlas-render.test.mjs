@@ -98,11 +98,25 @@ describe('findingOf', () => {
 describe('the page', () => {
   const atlas = buildAtlas([session('s', [asst('answered', 'requested'), err('quota [deadbeefdeadbeef]')])], { window: '7d' });
 
-  it('should stay offline: no script, no remote asset, no font link', () => {
+  it('should stay offline: no script, no remote asset, no font import', () => {
     const html = renderHtml(atlas);
     expect(html).not.toMatch(/<script/i);
-    expect(html).not.toMatch(/https?:\/\//);
     expect(html).not.toMatch(/@import/);
+    // Assert on asset references, not on the substring "http".
+    // A provider's error message can legitimately contain a URL — that is data a
+    // user pasted, and it is escaped. A blanket /https?:\/\// check fails on real
+    // reports for a reason that has nothing to do with fetching anything.
+    expect(html).not.toMatch(/<link\b/i);
+    expect(html).not.toMatch(/<img\b/i);
+    expect(html).not.toMatch(/\bsrc\s*=/i);
+    expect(html).not.toMatch(/url\(/i);
+  });
+
+  it('should escape a URL inside provider text instead of linking it', () => {
+    const withUrl = buildAtlas([session('s', [asst(), err('quota — see https://example.invalid/x')])], { window: '7d' });
+    const html = renderHtml(withUrl);
+    expect(html).not.toMatch(/<a\b/i);
+    expect(html).toContain('example.invalid');
   });
 
   it('should carry the product name and the scope in the masthead', () => {
