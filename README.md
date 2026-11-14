@@ -1,6 +1,6 @@
 # transcript-forensics
 
-[![tests](https://img.shields.io/badge/tests-77%20passing-brightgreen)](test/)
+[![tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)](test/)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-blue)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -105,6 +105,19 @@ credential is sitting in `settings.json` in plaintext.
 
 ## Pricing
 
-MIT, no paid tier, no account. If it saves you an afternoon, the useful contribution is a
-reproducible bug report: the transcript format is undocumented and changes between Claude Code
-versions.
+**Free.** MIT, no account, no telemetry, nothing gated. The CLI and all four skills are in this
+repository and will stay that way.
+
+| Skill | Marketplace listing |
+|---|---|
+| `read-sessions` | free |
+| `audit-install` | free |
+| `triage-failure` | free |
+| `audit-spend` | $5 optional — the platform's minimum card price, $3.50 after its 30% |
+
+The $5 listing is the cheapest thing the checkout will process; there is no $1 tier. The same skill
+is in this repository for nothing either way — the listing buys the fact that someone reviewed it
+before you did. See [docs/pricing.md](docs/pricing.md) for the rule, and why it will not move.
+
+If it saves you an afternoon, the useful contribution is a reproducible bug report: the transcript
+format is undocumented and changes between Claude Code versions.

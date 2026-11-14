@@ -85,6 +85,9 @@ jobs:
           node scripts/pack-skill.mjs --all
           for s in read-sessions audit-spend audit-install triage-failure; do
             test -f "dist/$s/SKILL.md" || { echo "::error::dist/$s/SKILL.md missing"; exit 1; }
+            # The README is the listing copy a marketplace shows before install.
+            test -f "dist/$s/README.md" || { echo "::error::dist/$s/README.md missing"; exit 1; }
+            test -f "dist/$s/LICENSE" || { echo "::error::dist/$s/LICENSE missing"; exit 1; }
           done
           # The zipped form has no plugin root, so the code must live inside it.
           node dist/read-sessions/src/cf-analyze.mjs --json > /dev/null

@@ -4,6 +4,18 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/);
 this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `docs/pricing.md` — the pricing rule, stated once: free, MIT, nothing gated. One optional $5
+  marketplace listing (`audit-spend`), which is the platform's minimum card price; three of the four
+  listings are free.
+- `marketplace/agensi/listings.json` — the listing plan (skill, zip, price, tags, one-line pitch).
+  A plan, not a submission: nothing has been uploaded.
+- A `README.md` per skill, shipped inside each zip. A marketplace shows it before install, and a zip
+  without it makes the buyer guess.
+
 ## [0.1.0] — 2026-11-14
 
 First release.

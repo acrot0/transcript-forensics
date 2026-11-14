@@ -87,6 +87,9 @@ describe('skills', () => {
       // The library is imported, not executed — the classic thing to forget.
       expect(fs.existsSync(path.join(r.dest, 'src', 'lib', 'transcript.mjs'))).toBe(true);
       expect(fs.existsSync(path.join(r.dest, 'LICENSE'))).toBe(true);
+      // The listing copy travels with the zip; without it the buyer sees only the
+      // frontmatter description.
+      expect(fs.existsSync(path.join(r.dest, 'README.md'))).toBe(true);
     } finally {
       fs.rmSync(out, { recursive: true, force: true });
     }

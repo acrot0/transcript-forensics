@@ -1,0 +1,61 @@
+{
+  "platform": "agensi.io",
+  "note": "Listing plan only — nothing here has been submitted. Submission needs the creator's own account.",
+  "policy": "docs/pricing.md",
+  "minimumCardPriceUSD": 5,
+  "creatorShare": 0.7,
+  "listings": [
+    {
+      "skill": "read-sessions",
+      "zip": "dist/read-sessions.zip",
+      "priceUSD": 0,
+      "payoutMethodRequired": false,
+      "tags": [
+        "claude-code",
+        "llm-ops",
+        "observability",
+        "debugging"
+      ],
+      "short": "See what actually happened in a Claude Code session: which model answered, where the tokens went, what compaction threw away."
+    },
+    {
+      "skill": "audit-install",
+      "zip": "dist/audit-install.zip",
+      "priceUSD": 0,
+      "payoutMethodRequired": false,
+      "tags": [
+        "claude-code",
+        "llm-ops",
+        "setup",
+        "troubleshooting"
+      ],
+      "short": "Find the Claude Code failures that produce no error message: dead hooks, rejected skills, missing plugins, oversized CLAUDE.md."
+    },
+    {
+      "skill": "triage-failure",
+      "zip": "dist/triage-failure.zip",
+      "priceUSD": 0,
+      "payoutMethodRequired": false,
+      "tags": [
+        "claude-code",
+        "debugging",
+        "llm-ops",
+        "troubleshooting"
+      ],
+      "short": "Diagnose a failed or slow Claude Code turn from the session log: upstream quota, relay fault, transport, or a retry that hid itself."
+    },
+    {
+      "skill": "audit-spend",
+      "zip": "dist/audit-spend.zip",
+      "priceUSD": 5,
+      "payoutMethodRequired": true,
+      "tags": [
+        "claude-code",
+        "cost",
+        "llm-ops",
+        "observability"
+      ],
+      "short": "Where Claude Code spend went, per model and per prompt — cross-checked against which model actually answered."
+    }
+  ]
+}

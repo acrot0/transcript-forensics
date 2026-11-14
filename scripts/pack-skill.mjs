@@ -44,6 +44,10 @@ export function packSkill(name, outDir = path.join(ROOT, 'dist')) {
   fs.rmSync(dest, { recursive: true, force: true });
   fs.mkdirSync(dest, { recursive: true });
   fs.copyFileSync(srcSkill, path.join(dest, 'SKILL.md'));
+  // The README is the listing copy: a marketplace shows it before install, and a
+  // zip without it forces the buyer to guess what the skill does.
+  const readme = path.join(ROOT, 'skills', name, 'README.md');
+  if (fs.existsSync(readme)) fs.copyFileSync(readme, path.join(dest, 'README.md'));
   for (const dep of deps) {
     const from = path.join(ROOT, 'src', dep);
     const to = path.join(dest, 'src', dep);
@@ -51,7 +55,7 @@ export function packSkill(name, outDir = path.join(ROOT, 'dist')) {
     fs.copyFileSync(from, to);
   }
   fs.copyFileSync(path.join(ROOT, 'LICENSE'), path.join(dest, 'LICENSE'));
-  return { name, dest, files: ['SKILL.md', 'LICENSE', ...deps.map((d) => `src/${d}`)] };
+  return { name, dest, files: ['SKILL.md', 'README.md', 'LICENSE', ...deps.map((d) => `src/${d}`)] };
 }
 
 export function main(argv) {
