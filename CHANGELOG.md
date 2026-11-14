@@ -8,6 +8,26 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- **Trigger evals** (`evals/`, 7 cases, run with `claude plugin eval .`). Unit tests cover
+  the numbers; these cover whether a skill is *chosen* when someone phrases the request their
+  own way. Five positives, two near-miss negatives that share the vocabulary but need
+  something else.
+- **Dated format provenance.** The page footer now states when the undocumented log format was
+  last verified and names the command that re-checks it (`cf-analyze --json` →
+  `formatFamiliarity`), so a reader can tell a stale result from a fresh one.
+
+### Fixed
+
+- **The trigger evals scored a dead run as a pass.** A negative case asserts "the skill was
+  not called"; a run that times out or errors also did not call it, and scored 1.00. The first
+  run recorded `ignore-configure-hook  score 1.00  error: timed out after 240s`. Each negative
+  case now carries a second grader requiring a real answer, so a dead run fails. This is the
+  same defect the tool reports on elsewhere — an unmeasured thing presented as a pass.
+- **Eval cases pin a model that can be reached.** Without it every run timed out, which then
+  scored as a pass for the reason above.
+
+### Added
+
 - **`cf-atlas` / `atlas`** — one self-contained HTML page (inline CSS, no scripts, no remote
   assets) joining projects, model attribution, substitutions, compactions, errors and install
   checks. `--out` chooses the file; nothing is served.

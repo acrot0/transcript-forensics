@@ -83,6 +83,24 @@ node src/cf-doctor.mjs                      # installation health
 All of them take `--json`. Exit codes are for automation: `cf-analyze` exits 1 on a model
 substitution or a 5xx; `cf-doctor` exits 1 only on a failure (warnings exit 0).
 
+## Tested two ways, not one
+
+```bash
+npx vitest run --pool=forks          # 169 unit tests: parsing, aggregation, the page
+claude plugin eval . --trust-plugin  # 7 trigger evals: does the right skill get picked?
+```
+
+The unit tests cover the numbers. The trigger evals cover the thing unit tests cannot see:
+whether a skill is chosen when a person phrases the request their own way. Five cases must
+fire a specific skill; two are near-misses that share the vocabulary but need something
+else, which is what catches a description that is merely broad.
+
+Both are worth reading because of what they caught. The evals initially scored a negative
+case **1.00 on a run that timed out** — a dead run also "did not call the skill", so the
+assertion passed for the wrong reason. It is the exact defect this project reports on
+elsewhere: an unmeasured thing presented as a pass. Each negative case now needs a second
+grader proving the agent actually answered. See [`evals/README.md`](evals/README.md).
+
 ## The rule these tools are built around
 
 **Unmeasured is not passing.** Every one of them distinguishes three states, not two:
@@ -96,6 +114,14 @@ substitution or a 5xx; `cf-doctor` exits 1 only on a failure (warnings exit 0).
 The third state exists because the alternative is a tool that says "all good" on a machine it
 never managed to read. `--json` emits `"measured": false` so a script cannot mistake one for the
 other, and the exit code stays 0 for unmeasured — a missing install is not a build failure.
+
+## How old the format knowledge is
+
+Every figure rests on an **undocumented** file format, so the age of that knowledge travels
+with the output: the page footer states the date the field-level behaviour was last checked,
+and names the command that re-verifies it on your machine (`cf-analyze --json` →
+`formatFamiliarity`). If Claude Code changes the shape, the tools report **unmeasured** and
+print no totals rather than printing zeroes.
 
 ## What it does not claim
 

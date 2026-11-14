@@ -46,6 +46,30 @@ export function barWidth(value, max) {
   return Math.max(2, Math.min(100, Math.round((value / max) * 100)));
 }
 
+/**
+ * Where the field-level knowledge in this file came from, and when it was last checked.
+ *
+ * Every number this project prints rests on an UNDOCUMENTED file format. That format is
+ * the whole risk: when it changes, the tool used to print confident zeroes. It now
+ * degrades loudly (see familiarity()), but "loudly" is only useful if a reader can tell
+ * how old the knowledge is. So the age travels with the output.
+ */
+export const FORMAT_PROVENANCE = {
+  verifiedOn: '2026-11-14',
+  observedWith: 'Claude Code 2.x session logs (JSONL) on this machine',
+  fields: [
+    'type', 'message.role', 'message.model', 'message.usage.{input_tokens,output_tokens,cache_read_input_tokens}',
+    'requestedModel', 'isSidechain', 'timestamp', 'sessionId',
+    'system/subtype=compact_boundary + compactMetadata.{trigger,preTokens,postTokens,cumulativeDroppedTokens}',
+    'system/subtype=api_error + {error,retryAttempt,maxRetries}',
+    'cost-state.{totalCostUSD,modelUsage,hasUnknownModelCost}',
+  ],
+  /** What the tool does when these stop appearing. */
+  onDrift: 'Report level "unknown", measured false, and refuse to print totals rather than print zeroes.',
+  /** How a reader re-verifies it themselves, without trusting this file. */
+  recheck: 'node src/cf-analyze.mjs --json and read formatFamiliarity.records / .missing.',
+};
+
 const round2 = (n) => Math.round(n * 100) / 100;
 
 /**
@@ -204,6 +228,7 @@ export function buildAtlas(summaries, opts = {}) {
       dropped: compactions.reduce((sum, c) => sum + (c.dropped || 0), 0),
     },
     familiarity: fam,
+    provenance: FORMAT_PROVENANCE,
     level: levelOf(agg),
     checks: opts.checks || [],
     configRoot: opts.configRoot || null,
@@ -545,6 +570,10 @@ export function renderHtml(atlas) {
     'Resumed sessions replay their history into a new file, so files are de-duplicated by session id before anything is summed. ' +
     'Nothing was uploaded, no API was called, and the page carries no scripts, fonts or images from anywhere else. ' +
     'A count that could not be taken is labelled unmeasured, never zero.<br><br>' +
+    '<b style="color:var(--muted)">Format knowledge.</b> Checked ' + escapeHtml(atlas.provenance.verifiedOn) + ' against ' +
+    escapeHtml(atlas.provenance.observedWith) + '. The file format is undocumented, so this is a dated observation, not a contract: ' +
+    'if Claude Code changes the shape, this page reports <em>unmeasured</em> and prints no totals. ' +
+    'Re-check it yourself with <code>' + escapeHtml(atlas.provenance.recheck) + '</code>.<br><br>' +
     'Regenerate: <code>node src/cf-atlas.mjs --since ' + escapeHtml(atlas.window) + '</code>' +
     (atlas.level === 'unknown' ? ' · overall level: <span style="color:var(--negative)">unknown</span>' : '') +
     '</footer>');

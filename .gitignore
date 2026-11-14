@@ -5,3 +5,6 @@ dist/
 
 # Design-skill working files (dealt style sheets), regenerated on demand
 .taste-skill/
+
+# Written by every `claude plugin eval` run
+evals/results/

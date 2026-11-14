@@ -152,3 +152,24 @@ describe('the page', () => {
     expect(html).not.toMatch(/<table/);
   });
 });
+
+describe('format provenance', () => {
+  it('should stamp every page with the date the format was last checked', () => {
+    // The whole tool rests on an undocumented format. If the page does not say how
+    // old that knowledge is, a reader cannot tell a stale result from a fresh one.
+    const html = renderHtml(buildAtlas([session('s', [asst()])], { window: '7d' }));
+    expect(html).toMatch(/Format knowledge/);
+    expect(html).toMatch(/Checked \d{4}-\d{2}-\d{2} against/);
+  });
+
+  it('should name the command a reader can run to re-verify it themselves', () => {
+    const html = renderHtml(buildAtlas([session('s', [asst()])], { window: '7d' }));
+    expect(html).toContain('cf-analyze.mjs --json');
+    expect(html).toContain('formatFamiliarity');
+  });
+
+  it('should state that drift degrades to unmeasured rather than to zero', () => {
+    const html = renderHtml(buildAtlas([session('s', [asst()])], { window: '7d' }));
+    expect(html).toMatch(/unmeasured/i);
+  });
+});
