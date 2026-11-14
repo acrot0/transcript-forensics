@@ -24,6 +24,64 @@ import {
   fmtTokens, fmtBytes, classifyModel, stripTag, listProjects,
 } from './lib/transcript.mjs';
 
+/**
+ * Every record type this build knows how to read.
+ *
+ * A type outside this set is not an error — Claude Code writes several kinds these
+ * tools deliberately ignore (`api-request-blob`, `file-history-delta`, …). It only
+ * becomes a signal when *nothing* is recognised, which is what a format change
+ * looks like from the inside.
+ */
+export const KNOWN_TYPES = new Set([
+  'user', 'assistant', 'system', 'attachment', 'cost-state', 'summary',
+  'queue-operation', 'file-history-snapshot', 'file-history-delta', 'last-prompt',
+  'ai-title', 'custom-title', 'agent-name', 'mode', 'atis-latch',
+  'api-request', 'api-request-shape', 'api-request-blob',
+]);
+
+/**
+ * Did this build actually understand the sessions it read?
+ *
+ * Three verdicts, and the third is the point:
+ *   'ok'            assistant records carry the fields this build reads
+ *   'degraded'      some do not — the report is partial, and must say so
+ *   'unrecognised'  assistant records exist but none carries a model or a usage
+ *                   block: the format moved, and every finding is empty because
+ *                   nothing could be read, not because nothing happened
+ *
+ * This exists because a probe with renamed fields (`requested_model`, `meta`)
+ * produced a clean `ok` report with zero findings. A tool whose whole promise is
+ * "unmeasured is not passing" cannot go quiet when it stops understanding its input.
+ */
+export function familiarity(fmt) {
+  if (!fmt || !fmt.assistant) {
+    return { verdict: fmt && fmt.records > 0 ? 'ok' : 'empty', ratio: null, missing: [], substitution: 'empty' };
+  }
+  const modelRatio = fmt.withModel / fmt.assistant;
+  const usageRatio = fmt.withUsage / fmt.assistant;
+  const ratio = Math.min(modelRatio, usageRatio);
+
+  // The substitution check reads `requestedModel`, which only *some* records carry
+  // (measured: 23.9% of assistant turns on a real install). So a zero there is not
+  // "no substitutions" — when no record carries the field at all, that one check
+  // had no input while the rest of the report is intact. Naming it is the whole
+  // difference between a finding and a false zero.
+  const withRequested = fmt.withRequested ?? null;
+  const substitution = withRequested === null ? 'unknown' : withRequested === 0 ? 'unmeasured' : 'ok';
+
+  if (ratio === 0) return { verdict: 'unrecognised', ratio, missing: ['message.model', 'message.usage'], substitution };
+  // Any record without the fields is a record this build counted as nothing, so
+  // the total is a lower bound rather than a measurement. Say so at 99%, not at
+  // 49%: the point of the verdict is that the number is not a total.
+  if (ratio < 1) {
+    const missing = [];
+    if (modelRatio < 1) missing.push('message.model');
+    if (usageRatio < 1) missing.push('message.usage');
+    return { verdict: 'degraded', ratio, missing, substitution };
+  }
+  return { verdict: 'ok', ratio, missing: [], substitution };
+}
+
 /** Aggregate one session's records into facts. Pure-ish: no I/O, so the tests can feed it. */
 export function summarizeSession(records) {
   const s = {
@@ -49,9 +107,18 @@ export function summarizeSession(records) {
     aliases: 0,
     prompts: 0,
     userTextChars: 0,
+    // Format familiarity. Claude Code's transcript format is undocumented and has
+    // changed shape between versions. A probe with a renamed field
+    // (`requested_model`, `meta`) produced a clean "ok" report with zero findings —
+    // a confident "nothing happened" on data this build could not read. Counting
+    // what was recognised is the only thing that separates the two.
+    fmt: { records: 0, known: 0, assistant: 0, withModel: 0, withUsage: 0, withRequested: 0, unknownTypes: new Map() },
   };
 
   for (const r of records) {
+    s.fmt.records++;
+    if (KNOWN_TYPES.has(r.type)) s.fmt.known++;
+    else if (r.type) s.fmt.unknownTypes.set(r.type, (s.fmt.unknownTypes.get(r.type) || 0) + 1);
     if (!s.sessionId && r.sessionId) s.sessionId = r.sessionId;
     if (!s.cwd && r.cwd) s.cwd = r.cwd;
     if (!s.version && r.version) s.version = r.version;
@@ -106,6 +173,10 @@ export function summarizeSession(records) {
       s.assistantTurns++;
       if (r.isSidechain) s.sidechainTurns++;
       const m = r.message || {};
+      s.fmt.assistant++;
+      if (typeof m.model === 'string' && m.model) s.fmt.withModel++;
+      if (m.usage && typeof m.usage === 'object') s.fmt.withUsage++;
+      if (typeof r.requestedModel === 'string' && r.requestedModel) s.fmt.withRequested++;
       const model = stripTag(m.model) || 'unknown';
       s.models.set(model, (s.models.get(model) || 0) + 1);
 
@@ -163,8 +234,18 @@ export function rollup(summaries, sessions) {
     compactions: [],
     startedAt: null,
     endedAt: null,
+    fmt: { records: 0, known: 0, assistant: 0, withModel: 0, withUsage: 0, withRequested: 0, unknownTypes: new Map() },
   };
   for (const s of summaries) {
+    if (s.fmt) {
+      agg.fmt.records += s.fmt.records;
+      agg.fmt.known += s.fmt.known;
+      agg.fmt.assistant += s.fmt.assistant;
+      agg.fmt.withModel += s.fmt.withModel;
+      agg.fmt.withUsage += s.fmt.withUsage;
+      agg.fmt.withRequested += s.fmt.withRequested || 0;
+      for (const [k, v] of s.fmt.unknownTypes) agg.fmt.unknownTypes.set(k, (agg.fmt.unknownTypes.get(k) || 0) + v);
+    }
     agg.prompts += s.prompts;
     agg.assistantTurns += s.assistantTurns;
     agg.sidechainTurns += s.sidechainTurns;
@@ -228,6 +309,9 @@ export function dedupeApiErrors(all) {
  */
 export function levelOf(agg, { strict = false } = {}) {
   if (agg.sessions === 0) return 'unknown';
+  // A format this build cannot read is not "clean", it is unmeasured — and that
+  // has to outrank every finding, because every finding is derived from it.
+  if (familiarity(agg.fmt).verdict === 'unrecognised') return 'unknown';
   if (agg.apiErrors.some((e) => (e.status ?? 0) >= 500)) return 'fail';
   if (agg.drift.length > 0) return strict ? 'fail' : 'warn';
   if (agg.apiErrors.length > 0 || agg.compactions.length > 0) return 'warn';
@@ -291,6 +375,22 @@ export function renderText(agg, opts = {}) {
     return lines.join('\n');
   }
 
+  const fam = familiarity(agg.fmt);
+  if (fam.verdict === 'unrecognised') {
+    lines.push('  ⚠️  UNRECOGNISED TRANSCRIPT FORMAT');
+    lines.push(`      ${agg.fmt.assistant} assistant record(s) read, none carried ${fam.missing.join(' or ')}.`);
+    lines.push('      Claude Code changed its log shape (it is undocumented and does move).');
+    lines.push('      Everything below would be empty because nothing could be read — not because');
+    lines.push('      nothing happened. This report is UNMEASURED; update the tool.');
+    lines.push('');
+    return lines.join('\n');
+  }
+  if (fam.verdict === 'degraded') {
+    lines.push(`  ⚠️  PARTIAL FORMAT MATCH — ${(fam.ratio * 100).toFixed(0)}% of assistant records matched; missing ${fam.missing.join(', ')}`);
+    lines.push('      Findings below are a lower bound, not a total.');
+    lines.push('');
+  }
+
   lines.push(`  sessions      ${agg.sessions} (${fmtBytes(agg.bytes)} read)`);
   lines.push(`  prompts       ${agg.prompts} from you, ${agg.assistantTurns} assistant turns`);
   if (agg.sidechainTurns) lines.push(`  subagents     ${agg.sidechainTurns} turns ran in a sidechain`);
@@ -305,6 +405,15 @@ export function renderText(agg, opts = {}) {
     lines.push('', '  MODELS THAT ACTUALLY ANSWERED');
     const w = Math.max(...models.map(([m]) => m.length));
     for (const [m, n] of models) lines.push(`    ${m.padEnd(w)}  ${String(n).padStart(6)} turns`);
+  }
+
+  if (fam.substitution === 'unmeasured') {
+    lines.push('');
+    lines.push('  MODEL SUBSTITUTION — not measurable from these logs');
+    lines.push('    No assistant record carries the model the client asked for, so this build');
+    lines.push('    cannot tell whether a substitution happened. That is not "none happened":');
+    lines.push('    Claude Code writes that field on only part of its turns, and a format that');
+    lines.push('    stopped writing it at all looks exactly like a clean run.');
   }
 
   if (agg.drift.length > 0) {
@@ -369,9 +478,11 @@ export function toJson(agg, levelOverride) {
     byRequested[d.requested].actual[d.actual] = (byRequested[d.requested].actual[d.actual] || 0) + 1;
     byRequested[d.requested].turns++;
   }
+  const fam = familiarity(agg.fmt);
   return {
     level: levelOverride ?? levelOf(agg),
-    measured: true,
+    measured: fam.verdict !== 'unrecognised',
+    formatFamiliarity: fam,
     window: agg.window,
     sessions: agg.sessions,
     bytes: agg.bytes,
