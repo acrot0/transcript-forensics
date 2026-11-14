@@ -1,0 +1,49 @@
+{
+  "name": "transcript-forensics",
+  "version": "0.1.0",
+  "description": "Read-only forensics for Claude Code: which model actually answered, where the tokens went, what was compacted away, and why a request failed.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/acrot0/transcript-forensics.git"
+  },
+  "bugs": {
+    "url": "https://github.com/acrot0/transcript-forensics/issues"
+  },
+  "homepage": "https://github.com/acrot0/transcript-forensics#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "bin": {
+    "transcript-forensics": "./src/cli.mjs",
+    "cf-analyze": "./src/cf-analyze.mjs",
+    "cf-cost": "./src/cf-cost.mjs",
+    "cf-doctor": "./src/cf-doctor.mjs"
+  },
+  "scripts": {
+    "test": "vitest run --pool=forks",
+    "test:watch": "vitest",
+    "pack:skills": "node scripts/pack-skill.mjs --all"
+  },
+  "files": [
+    "src",
+    "skills",
+    ".claude-plugin",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "keywords": [
+    "claude-code",
+    "forensics",
+    "observability",
+    "transcripts",
+    "diagnostics",
+    "agent-skills",
+    "prompt-cache"
+  ],
+  "devDependencies": {
+    "vitest": "^3.2.1"
+  }
+}

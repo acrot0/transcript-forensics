@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        node: ['20.x', '22.x', '24.x']
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Assert line endings are LF
+        # Not cosmetic. On Windows with core.autocrlf=true a clone rewrites these
+        # files to CRLF and the test transform then fails to parse them with
+        # "SyntaxError: Invalid or unexpected token". .gitattributes prevents it;
+        # this step fails loudly if that ever regresses.
+        shell: bash
+        run: |
+          if grep -rlU $'\r' src test skills 2>/dev/null | head -1 | grep -q .; then
+            echo "::error::CRLF line endings found — .gitattributes is not being honoured"
+            grep -rlU $'\r' src test skills
+            exit 1
+          fi
+          echo "OK: all source files use LF"
+
+      - run: npm ci
+      - run: npm test
+
+  portable:
+    name: runs with no Claude Code installed (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22.x'
+      - run: npm ci
+
+      - name: Every tool degrades to "unmeasured", never to "ok"
+        # This is the failure mode a unit test cannot reach: a real filesystem
+        # with no ~/.claude on it. Reporting "all good" there would be the worst
+        # possible answer, so the assertion is on the level, not on the exit code.
+        shell: bash
+        run: |
+          set -e
+          for tool in src/cf-analyze.mjs src/cf-cost.mjs src/cf-doctor.mjs; do
+            echo "--- $tool"
+            out="$(node "$tool" --json 2>/dev/null || true)"
+            echo "$out" | node -e '
+              let s = "";
+              process.stdin.on("data", (d) => (s += d)).on("end", () => {
+                if (!s.trim()) { console.error("no JSON output at all"); process.exit(1); }
+                const j = JSON.parse(s);
+                if (j.level === "ok") { console.error("reported ok on a machine with no Claude Code — that is the bug"); process.exit(1); }
+                if (j.level === "unknown" && j.measured === false) { console.log("OK: unmeasured"); return; }
+                console.log("OK: level=" + j.level);
+              });
+            '
+          done
+
+      - name: A missing install is not a failing build
+        run: |
+          set -e
+          node src/cf-doctor.mjs > /dev/null; echo "doctor exit=$?"
+          node src/cf-analyze.mjs --since 1d --json > /dev/null; echo "analyze exit=$?"
+          node src/cf-cost.mjs --json > /dev/null; echo "cost exit=$?"
+
+      - name: Packed standalone skills still run
+        shell: bash
+        run: |
+          set -e
+          node scripts/pack-skill.mjs --all
+          for s in read-sessions audit-spend audit-install triage-failure; do
+            test -f "dist/$s/SKILL.md" || { echo "::error::dist/$s/SKILL.md missing"; exit 1; }
+          done
+          # The zipped form has no plugin root, so the code must live inside it.
+          node dist/read-sessions/src/cf-analyze.mjs --json > /dev/null
+          node dist/audit-spend/src/cf-cost.mjs --json > /dev/null
+          node dist/audit-install/src/cf-doctor.mjs --json > /dev/null
+          echo "OK: every packed skill runs with its own copy of src/"

@@ -1,0 +1,27 @@
+{
+  "name": "transcript-forensics",
+  "description": "Read-only forensics for Claude Code session logs and installation health.",
+  "owner": {
+    "name": "acrot0",
+    "url": "https://github.com/acrot0"
+  },
+  "plugins": [
+    {
+      "name": "transcript-forensics",
+      "source": "./",
+      "description": "Read-only forensics for Claude Code session logs: which model actually answered, where the tokens went, what compaction threw away, and why a request failed.",
+      "version": "0.1.0",
+      "author": {
+        "name": "acrot0",
+        "url": "https://github.com/acrot0"
+      },
+      "license": "MIT",
+      "keywords": [
+        "claude-code",
+        "forensics",
+        "observability"
+      ],
+      "category": "observability"
+    }
+  ]
+}

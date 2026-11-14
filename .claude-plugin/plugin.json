@@ -1,0 +1,21 @@
+{
+  "name": "transcript-forensics",
+  "displayName": "Claude Code Session Forensics",
+  "version": "0.1.0",
+  "description": "Read-only forensics for Claude Code session logs: which model actually answered, where the tokens went, what compaction threw away, and why a request failed.",
+  "author": {
+    "name": "acrot0",
+    "url": "https://github.com/acrot0"
+  },
+  "homepage": "https://github.com/acrot0/transcript-forensics",
+  "repository": "https://github.com/acrot0/transcript-forensics",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "forensics",
+    "observability",
+    "diagnostics",
+    "transcripts"
+  ],
+  "defaultEnabled": true
+}
