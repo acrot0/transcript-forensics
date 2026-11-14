@@ -142,18 +142,35 @@ export function summarizeSession(records) {
       }
       if (r.subtype === 'compact_boundary') {
         const m = r.compactMetadata || {};
+        // `cumulativeDroppedTokens` is cumulative across the whole SESSION, not the
+        // amount this boundary removed. Summing it per boundary multiplied one
+        // session's 149K into a 26M "total" — a wrong number that reads as a fact.
+        // The per-event figure is pre - post; the cumulative one is kept aside.
+        const pre = m.preTokens ?? null;
+        const post = m.postTokens ?? null;
         s.compactions.push({
           trigger: m.trigger ?? 'unknown',
-          preTokens: m.preTokens ?? null,
-          postTokens: m.postTokens ?? null,
-          dropped: m.cumulativeDroppedTokens ?? (m.preTokens && m.postTokens ? m.preTokens - m.postTokens : null),
+          preTokens: pre,
+          postTokens: post,
+          dropped: pre !== null && post !== null ? pre - post : null,
+          cumulativeDropped: m.cumulativeDroppedTokens ?? null,
           durationMs: m.durationMs ?? null,
           at,
         });
       }
     }
 
-    if (r.type === 'cost-state') s.cost = { totalCostUSD: r.totalCostUSD ?? null, modelUsage: r.modelUsage ?? null };
+    if (r.type === 'cost-state') {
+      // The client sets this when its pricing table has no entry for the model. On
+      // the machine this was built against, every single record carried it: the
+      // spend figure is a guess by the client, not a rate anyone quoted.
+      s.cost = {
+        totalCostUSD: r.totalCostUSD ?? null,
+        modelUsage: r.modelUsage ?? null,
+        hasUnknownModelCost: r.hasUnknownModelCost === true,
+      };
+      if (r.hasUnknownModelCost === true) s.costUnknownModel = true;
+    }
 
     if (r.type === 'user') {
       const c = r.message?.content;
@@ -222,6 +239,12 @@ export function rollup(summaries, sessions) {
     tokens: { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 },
     costUSD: 0,
     costKnown: false,
+    costSessions: 0,
+    // How many of those the client itself flagged as "no pricing entry for this
+    // model". On the machine this was built against: all of them. A total built
+    // entirely from unknown-model guesses is not an estimate, it is arithmetic
+    // on a placeholder.
+    costUnpriced: 0,
     models: new Map(),
     aliases: 0,
     drift: [],
@@ -251,7 +274,12 @@ export function rollup(summaries, sessions) {
     agg.tokens.output += s.tokens.output;
     agg.tokens.cacheRead += s.tokens.cacheRead;
     agg.tokens.cacheCreate += s.tokens.cacheCreate;
-    if (s.cost?.totalCostUSD != null) { agg.costUSD += s.cost.totalCostUSD; agg.costKnown = true; }
+    if (s.cost?.totalCostUSD != null) {
+      agg.costUSD += s.cost.totalCostUSD;
+      agg.costKnown = true;
+      agg.costSessions++;
+      if (s.cost.hasUnknownModelCost) agg.costUnpriced++;
+    }
     for (const [k, v] of s.models) agg.models.set(k, (agg.models.get(k) || 0) + v);
     agg.aliases += s.aliases || 0;
     if (s.drift.length > 0 && s.sessionId) agg.driftSessions.add(s.sessionId);
@@ -356,7 +384,28 @@ async function scan(opts) {
     sum.unreadable = false;
     summaries.push(sum);
   }
-  return { projectsDir, summaries, sessions: { scanned: sessions.length, bytes, skipped } };
+  return { projectsDir, summaries: dedupeResumed(summaries), sessions: { scanned: sessions.length, bytes, skipped } };
+}
+
+/**
+ * Collapse files that are the same session resumed.
+ *
+ * Resuming or forking a session makes Claude Code write a NEW file that replays the
+ * earlier records. Measured on this machine: 398 files, 330 distinct session ids,
+ * one session present in 17 files with the same cumulative cost in each. Summing
+ * across files multiplied that session's spend 17 times and inflated the total from
+ * about $397 to $3,566 — a number that looks authoritative and is wrong.
+ *
+ * The replay is a superset, so the newest file per id is kept.
+ */
+export function dedupeResumed(summaries) {
+  const byId = new Map();
+  for (const s of summaries) {
+    const id = s.sessionId || s.file;
+    const prev = byId.get(id);
+    if (!prev || (s.mtimeMs || 0) > (prev.mtimeMs || 0)) byId.set(id, s);
+  }
+  return [...byId.values()];
 }
 
 const pct = (n) => (n === null ? '—' : `${n.toFixed(1)}%`);
@@ -396,7 +445,21 @@ export function renderText(agg, opts = {}) {
   const tpp = agg.prompts > 0 ? Math.round((agg.tokens.input + agg.tokens.cacheRead) / agg.prompts) : null;
   if (tpp !== null) lines.push(`  per prompt    ${fmtTokens(tpp)} prompt tokens on average`);
   lines.push(`  cache hit     ${pct(cacheRate(agg.tokens))} of prompt tokens came from cache`);
-  if (agg.costKnown) lines.push(`  reported cost $${agg.costUSD.toFixed(2)} (the client\'s own estimate, not a bill)`);
+  if (agg.costKnown) {
+    const allUnpriced = agg.costUnpriced === agg.costSessions;
+    lines.push(
+      `  reported cost $${agg.costUSD.toFixed(2)}  ` +
+      (allUnpriced
+        ? `UNRELIABLE — the client flagged all ${agg.costSessions} record(s) as an unknown model price`
+        : agg.costUnpriced > 0
+          ? `(${agg.costUnpriced} of ${agg.costSessions} record(s) used an unknown model price)`
+          : '(the client\'s own pricing table, not a bill)')
+    );
+    if (allUnpriced) {
+      lines.push('                No rate exists for these model ids, so this number is arithmetic on a');
+      lines.push('                placeholder estimate. Compare against the provider invoice, never this.');
+    }
+  }
 
   const models = [...agg.models.entries()].sort((a, b) => b[1] - a[1]);
   if (models.length > 0) {
@@ -490,6 +553,11 @@ export function toJson(agg, levelOverride) {
     tokens: agg.tokens,
     cacheHitRate: cacheRate(agg.tokens),
     costUSD: agg.costKnown ? agg.costUSD : null,
+    costSessions: agg.costSessions,
+    costUnpricedSessions: agg.costUnpriced,
+    // true when every cost record rests on an unknown-model price: usable as a
+    // relative signal at best, never as an amount
+    costIsPlaceholder: agg.costKnown && agg.costUnpriced === agg.costSessions,
     models,
     substitutions: byRequested,
     substitutionTurns: agg.drift.length,

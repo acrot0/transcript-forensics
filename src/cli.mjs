@@ -18,7 +18,11 @@ export const COMMANDS = {
   analyze: './cf-analyze.mjs',
   cost: './cf-cost.mjs',
   doctor: './cf-doctor.mjs',
+  atlas: './cf-atlas.mjs',
 };
+
+/** Only the three that print a verdict; `atlas` writes a file and has no level. */
+export const SWEEP = ['analyze', 'cost', 'doctor'];
 
 export function resolveCommand(name) {
   if (typeof name !== 'string' || !name) return null;
@@ -76,10 +80,12 @@ export function main(argv = process.argv.slice(2)) {
     process.exit(res.code);
   }
 
-  // No subcommand: run all three, report the worst. Each one gets --json so the
+  // No subcommand: run the checks, report the worst. Each one gets --json so the
   // verdict comes from its own level, not from scraping human-readable text.
+  // `atlas` is excluded: it writes an HTML file and has no pass/fail to report.
   const results = [];
-  for (const [name, file] of Object.entries(COMMANDS)) {
+  for (const name of SWEEP) {
+    const file = COMMANDS[name];
     const res = run(file, ['--json']);
     let level = levelOf(res.code);
     try {

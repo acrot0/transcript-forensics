@@ -1,26 +1,26 @@
 # transcript-forensics
 
-[![tests](https://img.shields.io/badge/tests-130%20passing-brightgreen)](test/)
+[![tests](https://img.shields.io/badge/tests-149%20passing-brightgreen)](test/)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-blue)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Read-only forensics for **Claude Code**. Claude Code writes a complete record of every session to
-disk and then shows almost none of it. These tools read that record and answer the questions you
-actually ask:
-
-| Question | Tool |
-|---|---|
-| Which model actually answered when I asked for another? | `cf-analyze` |
-| Where did the tokens go — and what just compacts away? | `cf-analyze` |
-| Why did that request fail, and did it silently retry? | `cf-analyze` |
-| What is this costing, per model and per prompt? | `cf-cost` |
-| Why is a hook/skill/plugin silently not working? | `cf-doctor` |
+disk and then shows almost none of it. These tools read that record.
 
 ```bash
-npx transcript-forensics analyze --since 7d
+npx transcript-forensics atlas --since 30d --out atlas.html
 ```
 
-Nothing here writes. No network call, no telemetry, no account.
+One command, one self-contained HTML file — no server, no CDN, no JavaScript, no network. It joins
+session history, which model actually answered, what compaction threw away, upstream errors, and
+install state into a page you can open from disk in five years.
+
+| Question | Command |
+|---|---|
+| Which model actually answered when I asked for another? | `analyze` |
+| What is this costing, per model and per prompt? | `cost` |
+| Why is a hook/skill/plugin silently not working? | `doctor` |
+| Show me all of it, as one page | `atlas` |
 
 ## Which of my two projects do you want?
 

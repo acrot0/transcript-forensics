@@ -33,6 +33,9 @@ export const SKILL_DEPS = {
   'audit-spend': ['cf-cost.mjs', 'cf-analyze.mjs', 'lib/transcript.mjs'],
   'audit-install': ['cf-doctor.mjs', 'lib/transcript.mjs'],
   'triage-failure': ['cf-analyze.mjs', 'lib/transcript.mjs'],
+  // The atlas imports the analyzer and the doctor, so a zip without them fails at
+  // the first line it executes — after download.
+  'build-atlas': ['cf-atlas.mjs', 'cf-analyze.mjs', 'cf-doctor.mjs', 'lib/transcript.mjs'],
 };
 
 export function packSkill(name, outDir = path.join(ROOT, 'dist')) {

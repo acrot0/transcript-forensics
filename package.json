@@ -19,7 +19,8 @@
     "transcript-forensics": "./src/cli.mjs",
     "cf-analyze": "./src/cf-analyze.mjs",
     "cf-cost": "./src/cf-cost.mjs",
-    "cf-doctor": "./src/cf-doctor.mjs"
+    "cf-doctor": "./src/cf-doctor.mjs",
+    "cf-atlas": "./src/cf-atlas.mjs"
   },
   "scripts": {
     "test": "vitest run --pool=forks",
