@@ -91,7 +91,6 @@ export function summarizeSession(records) {
     entrypoint: null,
     startsAt: null,
     endsAt: null,
-    turns: 0,
     assistantTurns: 0,
     sidechainTurns: 0,
     tokens: { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 },
@@ -202,7 +201,6 @@ export function summarizeSession(records) {
         for (const b of m.content) {
           if (b.type === 'tool_use') {
             s.toolCalls.set(b.name, (s.toolCalls.get(b.name) || 0) + 1);
-            s.turns++;
           }
         }
       }

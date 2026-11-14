@@ -1,6 +1,6 @@
 # transcript-forensics
 
-[![tests](https://img.shields.io/badge/tests-120%20passing-brightgreen)](test/)
+[![tests](https://img.shields.io/badge/tests-130%20passing-brightgreen)](test/)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-blue)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
@@ -21,6 +21,17 @@ npx transcript-forensics analyze --since 7d
 ```
 
 Nothing here writes. No network call, no telemetry, no account.
+
+## Which of my two projects do you want?
+
+| You use | Install |
+|---|---|
+| Claude Code, no custom gateway | **this repo** — `transcript-forensics` |
+| Claude Code **through Claude Code Router (CCR)** | [ccr-toolkit](https://github.com/acrot0/ccr-toolkit) — gateway-side diagnosis |
+| Both | both; they read different files and do not overlap |
+
+This one reads `~/.claude` (session logs and config). ccr-toolkit reads CCR's own databases
+(`request-log.sqlite`, `usage.sqlite`). Neither needs the other.
 
 ## Install
 
