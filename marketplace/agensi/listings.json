@@ -1,13 +1,14 @@
 {
   "platform": "agensi.io",
-  "note": "Listing plan only — nothing here has been submitted. Submission needs the creator's own account.",
+  "note": "Listing plan. Submission is done by the account holder at https://www.agensi.io/dashboard/submit — this file is the copy, not a submission.",
   "policy": "docs/pricing.md",
+  "submitURL": "https://www.agensi.io/dashboard/submit",
   "minimumCardPriceUSD": 5,
   "creatorShare": 0.7,
   "listings": [
     {
       "skill": "read-sessions",
-      "zip": "dist/read-sessions.zip",
+      "zip": "read-sessions.zip",
       "priceUSD": 0,
       "payoutMethodRequired": false,
       "tags": [
@@ -20,7 +21,7 @@
     },
     {
       "skill": "audit-install",
-      "zip": "dist/audit-install.zip",
+      "zip": "audit-install.zip",
       "priceUSD": 0,
       "payoutMethodRequired": false,
       "tags": [
@@ -33,7 +34,7 @@
     },
     {
       "skill": "triage-failure",
-      "zip": "dist/triage-failure.zip",
+      "zip": "triage-failure.zip",
       "priceUSD": 0,
       "payoutMethodRequired": false,
       "tags": [
@@ -45,8 +46,21 @@
       "short": "Diagnose a failed or slow Claude Code turn from the session log: upstream quota, relay fault, transport, or a retry that hid itself."
     },
     {
+      "skill": "build-atlas",
+      "zip": "build-atlas.zip",
+      "priceUSD": 0,
+      "payoutMethodRequired": false,
+      "tags": [
+        "claude-code",
+        "reporting",
+        "llm-ops",
+        "observability"
+      ],
+      "short": "One offline HTML page of your Claude Code history - no server, no scripts, no network."
+    },
+    {
       "skill": "audit-spend",
-      "zip": "dist/audit-spend.zip",
+      "zip": "audit-spend.zip",
       "priceUSD": 5,
       "payoutMethodRequired": true,
       "tags": [
@@ -55,7 +69,7 @@
         "llm-ops",
         "observability"
       ],
-      "short": "Where Claude Code spend went, per model and per prompt — cross-checked against which model actually answered."
+      "short": "Where Claude Code spend went, per model and per prompt - cross-checked against which model actually answered."
     }
   ]
 }
