@@ -7,6 +7,8 @@
 Read-only forensics for **Claude Code**. Claude Code writes a complete record of every session to
 disk and then shows almost none of it. These tools read that record.
 
+**[Download v0.1.0](https://github.com/acrot0/transcript-forensics/releases/tag/v0.1.0)** — five skill zips, or use it as a plugin.
+
 ```bash
 npx transcript-forensics atlas --since 30d --out atlas.html
 ```
