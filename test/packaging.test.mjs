@@ -113,6 +113,18 @@ describe('manifests', () => {
     expect(plugin.license).toBe('MIT');
   });
 
+  it('should list every shipped skill in both READMEs', () => {
+    // build-atlas shipped while both READMEs still said "four skills". A skill
+    // nobody is told about is a skill nobody installs, and no other test looks
+    // at prose.
+    for (const doc of ['README.md', path.join('skills', 'README.md')]) {
+      const text = read(path.join(ROOT, doc));
+      for (const name of dirs) {
+        expect(text, `${doc} never mentions the ${name} skill`).toContain(name);
+      }
+    }
+  });
+
   it('should rely on skill auto-discovery rather than a second list', () => {
     expect(plugin.skills).toBeUndefined();
     expect(fs.existsSync(SKILLS)).toBe(true);

@@ -7,6 +7,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { summarizeCost, costPerPrompt, topModel } from '../src/cf-cost.mjs';
+import { dedupeResumed } from '../src/lib/transcript.mjs';
 
 const session = (total, usage = {}) => ({ cost: { totalCostUSD: total, modelUsage: usage } });
 
@@ -42,6 +43,43 @@ describe('summarizeCost', () => {
     const s = summarizeCost([{ cost: null }]);
     expect(s.total).toBe(0);
     expect(s.cacheReadShare).toBeNull();
+  });
+});
+
+describe('resumed sessions', () => {
+  /**
+   * The defect this pins: cf-cost summed per FILE while cf-analyze summed per
+   * SESSION ID, so the same 30-day window produced $3,566 from one tool and $3,562
+   * from the other, with 37 sessions vs 34. Both looked authoritative; nothing
+   * flagged the disagreement. One shared rule now, in one place.
+   */
+  const file = (sessionId, total, mtimeMs) => ({ sessionId, mtimeMs, cost: { totalCostUSD: total, modelUsage: { 'a/m': { inputTokens: 0, outputTokens: 0, cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: total } } } });
+
+  it('should keep the newest file per session id', () => {
+    const kept = dedupeResumed([
+      file('s1', 100, 1000),
+      file('s1', 100, 3000), // the resume — replays the same cumulative cost
+      file('s2', 5, 2000),
+    ]);
+    expect(kept).toHaveLength(2);
+    expect(kept.find((r) => r.sessionId === 's1').mtimeMs).toBe(3000);
+  });
+
+  it('should not inflate the total when a session was resumed 17 times', () => {
+    const files = Array.from({ length: 17 }, (_, i) => file('s1', 397, 1000 + i));
+    files.push(file('s2', 3, 500));
+    const s = summarizeCost(dedupeResumed(files));
+    expect(s.total).toBe(400); // not 397*17 + 3
+    expect(s.reported).toBe(2);
+  });
+
+  it('should fall back to the filename when a record carries no session id', () => {
+    const kept = dedupeResumed([
+      { session: 'by-name', file: '/x/a.jsonl', mtimeMs: 1 },
+      { session: 'by-name', file: '/x/b.jsonl', mtimeMs: 2 },
+    ]);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].file).toBe('/x/b.jsonl');
   });
 });
 

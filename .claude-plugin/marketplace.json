@@ -10,7 +10,7 @@
       "name": "transcript-forensics",
       "source": "./",
       "description": "Read-only forensics for Claude Code session logs: which model actually answered, where the tokens went, what compaction threw away, and why a request failed.",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "author": {
         "name": "acrot0",
         "url": "https://github.com/acrot0"

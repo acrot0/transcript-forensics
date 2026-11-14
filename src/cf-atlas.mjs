@@ -109,6 +109,10 @@ export function errorCause(e) {
 export function dailyRows(summaries, windowDays) {
   const byDay = new Map();
   const dayKey = (iso) => String(iso || '').slice(0, 10);
+  // Same record-level rule as the totals: a fork replays the parent's boundaries
+  // under a new session id, so dedupe-by-session-id does not catch it.
+  const seenCompaction = new Set();
+  const seenError = new Set();
   for (const s of summaries) {
     for (const at of [s.startsAt, s.endsAt]) {
       if (!at) continue;
@@ -121,9 +125,19 @@ export function dailyRows(summaries, windowDays) {
     const row = byDay.get(k) || { day: k, turns: 0, promptTokens: 0, compactions: 0, dropped: 0, errors: 0, substitutions: 0 };
     row.turns += s.assistantTurns || 0;
     row.promptTokens += (s.tokens?.input || 0) + (s.tokens?.cacheRead || 0);
-    row.compactions += s.compactions.length;
-    row.dropped += s.compactions.reduce((n, c) => n + (c.dropped || 0), 0);
-    row.errors += s.apiErrors.length;
+    for (const c of s.compactions) {
+      const ck = `${c.at || ''}|${c.preTokens ?? ''}|${c.postTokens ?? ''}`;
+      if (seenCompaction.has(ck)) continue;
+      seenCompaction.add(ck);
+      row.compactions++;
+      row.dropped += c.dropped || 0;
+    }
+    for (const e of s.apiErrors) {
+      const ek = `${e.at || ''}|${e.status ?? ''}|${(e.message || '').slice(0, 80)}`;
+      if (seenError.has(ek)) continue;
+      seenError.add(ek);
+      row.errors++;
+    }
     row.substitutions += s.drift.length;
     byDay.set(k, row);
   }
@@ -147,6 +161,8 @@ export function buildAtlas(summaries, opts = {}) {
   const substitutions = new Map();
   const errors = new Map();
   const compactions = [];
+  const seenCompaction = new Set();
+  const seenError = new Set();
 
   for (const s of summaries) {
     const key = s.project || 'unknown';
@@ -169,9 +185,15 @@ export function buildAtlas(summaries, opts = {}) {
       p.models.set(m, (p.models.get(m) || 0) + n);
       models.set(m, (models.get(m) || 0) + n);
     }
-    p.compactions += s.compactions.length;
-    p.errors += s.apiErrors.length;
     for (const c of s.compactions) {
+      // A fork replays the parent's boundaries under a new session id, so the
+      // dedupe-by-id upstream cannot see them. Counting each replay made the page
+      // report 120 boundaries / 19.4M while the CLI reported 119 / 19.2M for the
+      // same window — two numbers, both presented as measured.
+      const ck = `${c.at || ''}|${c.preTokens ?? ''}|${c.postTokens ?? ''}`;
+      if (seenCompaction.has(ck)) continue;
+      seenCompaction.add(ck);
+      p.compactions++;
       p.dropped += c.dropped || 0;
       compactions.push({ at: c.at, project: key, trigger: c.trigger, pre: c.preTokens, post: c.postTokens, dropped: c.dropped });
     }
@@ -183,6 +205,13 @@ export function buildAtlas(summaries, opts = {}) {
       substitutions.set(k, rec);
     }
     for (const e of s.apiErrors) {
+      // One record, counted once. Both the per-project column and the grouped table
+      // read from here, because they used to be two loops — and only one of them
+      // deduped the replay.
+      const ek = `${e.at || ''}|${e.status ?? ''}|${(e.message || '').slice(0, 80)}`;
+      if (seenError.has(ek)) continue;
+      seenError.add(ek);
+      p.errors++;
       // Group by cause, not by raw message. A provider echoes a request id inside
       // the message, so one quota error repeated five times arrived as five
       // distinct strings and printed as five rows of 2 — the same fault counted

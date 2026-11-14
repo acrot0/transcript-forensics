@@ -1,6 +1,6 @@
 {
   "name": "transcript-forensics",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Read-only forensics for Claude Code: which model actually answered, where the tokens went, what was compacted away, and why a request failed.",
   "type": "module",
   "license": "MIT",

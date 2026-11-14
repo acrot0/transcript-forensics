@@ -197,6 +197,34 @@ export function isModelDrift(requested, actual) {
   return classifyModel(requested, actual) === 'substituted';
 }
 
+/**
+ * Collapse files that are one session resumed or forked.
+ *
+ * Resuming writes a NEW file that replays the earlier records, so the same session
+ * appears several times and every cumulative figure in it (cost, compaction loss)
+ * appears several times too. Measured on one machine: 402 files, 399 distinct ids,
+ * one session present in 17 files carrying the same cumulative cost in each.
+ *
+ * Summing across files is the defect that turned ~$397 of spend into $3,562, and it
+ * came back once as two tools disagreeing with each other ($3,562 vs $3,566, 34
+ * sessions vs 37) because only one of them de-duplicated. Hence one function, in the
+ * shared module, used by every tool that counts a session.
+ *
+ * The replay is a superset, so the newest file per id is the one kept.
+ *
+ * `rows` need `sessionId` (or `session`), `mtimeMs` and — for callers that sum
+ * something — whatever they sum. Nothing is mutated.
+ */
+export function dedupeResumed(rows) {
+  const byId = new Map();
+  for (const r of rows) {
+    const id = r.sessionId || r.session || r.file;
+    const prev = byId.get(id);
+    if (!prev || (r.mtimeMs || 0) > (prev.mtimeMs || 0)) byId.set(id, r);
+  }
+  return [...byId.values()];
+}
+
 /** Human token count: 1_798_400 → "1.8M". Keeps tables readable. */
 export function fmtTokens(n) {
   if (!Number.isFinite(n)) return '—';

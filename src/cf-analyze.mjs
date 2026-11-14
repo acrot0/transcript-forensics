@@ -21,7 +21,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
   locateProjects, listSessions, readSession, windowToMs, parseArgs,
-  fmtTokens, fmtBytes, classifyModel, stripTag, listProjects,
+  fmtTokens, fmtBytes, classifyModel, stripTag, listProjects, dedupeResumed,
 } from './lib/transcript.mjs';
 
 /**
@@ -387,26 +387,9 @@ async function scan(opts) {
   return { projectsDir, summaries: dedupeResumed(summaries), sessions: { scanned: sessions.length, bytes, skipped } };
 }
 
-/**
- * Collapse files that are the same session resumed.
- *
- * Resuming or forking a session makes Claude Code write a NEW file that replays the
- * earlier records. Measured on this machine: 398 files, 330 distinct session ids,
- * one session present in 17 files with the same cumulative cost in each. Summing
- * across files multiplied that session's spend 17 times and inflated the total from
- * about $397 to $3,566 — a number that looks authoritative and is wrong.
- *
- * The replay is a superset, so the newest file per id is kept.
- */
-export function dedupeResumed(summaries) {
-  const byId = new Map();
-  for (const s of summaries) {
-    const id = s.sessionId || s.file;
-    const prev = byId.get(id);
-    if (!prev || (s.mtimeMs || 0) > (prev.mtimeMs || 0)) byId.set(id, s);
-  }
-  return [...byId.values()];
-}
+// Defined in lib/transcript.mjs and re-exported: cf-cost and cf-atlas need the same
+// rule, and two copies is how they came to disagree once already.
+export { dedupeResumed };
 
 const pct = (n) => (n === null ? '—' : `${n.toFixed(1)}%`);
 

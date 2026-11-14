@@ -1,8 +1,8 @@
 # Skills
 
-Four skills in the open [Agent Skills](https://agentskills.io/specification) format. Each is a plain
+Five skills in the open [Agent Skills](https://agentskills.io/specification) format. Each is a plain
 directory with a `SKILL.md` — no build step, no runtime, nothing to install. Copy a directory into
-`~/.claude/skills/`, or install the plugin and get all four.
+`~/.claude/skills/`, or install the plugin and get all five.
 
 | Skill | Answers |
 |---|---|
@@ -10,6 +10,7 @@ directory with a `SKILL.md` — no build step, no runtime, nothing to install. C
 | `audit-spend` | what this is costing, per model and per prompt — and whether that model was the one you asked for |
 | `audit-install` | why a hook, skill or plugin is silently not working |
 | `triage-failure` | client bug, relay fault, upstream quota, or a retry that hid itself |
+| `build-atlas` | all of the above as one self-contained HTML page you can open offline |
 
 ## Package one skill as a zip
 

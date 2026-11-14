@@ -35,7 +35,7 @@ node "$TOOLKIT/src/cf-analyze.mjs" --projects           # per-project size and a
 
 | Line in the report | What it proves | What you must NOT say |
 |---|---|---|
-| `MODEL SUBSTITUTION` | the client requested one id and a different one answered — on a measured machine, 5,668 turns of it | never "the model changed"; the request did not change, the answer did |
+| `MODEL SUBSTITUTION` | the client requested one id and a different one answered — on a measured machine, 11,490 turns in 30 days | never "the model changed"; the request did not change, the answer did |
 | `aliasExpansions` in `--json` | `sonnet` → a dated snapshot is normal and was excluded | do not merge this count into substitutions |
 | `cache hit` | cache-read tokens ÷ (cache-read + fresh input) | a low rate on a *new* session is cold start, not a regression |
 | `per prompt` | full prompt size per turn — what a compaction makes you pay again | not the same as "cost per turn" |

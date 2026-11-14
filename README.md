@@ -1,13 +1,13 @@
 # transcript-forensics
 
-[![tests](https://img.shields.io/badge/tests-149%20passing-brightgreen)](test/)
+[![CI](https://github.com/acrot0/transcript-forensics/actions/workflows/ci.yml/badge.svg)](https://github.com/acrot0/transcript-forensics/actions/workflows/ci.yml)
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-blue)](https://nodejs.org)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
 Read-only forensics for **Claude Code**. Claude Code writes a complete record of every session to
 disk and then shows almost none of it. These tools read that record.
 
-**[Download v0.1.0](https://github.com/acrot0/transcript-forensics/releases/tag/v0.1.0)** — five skill zips, or use it as a plugin.
+**[Download v0.1.1](https://github.com/acrot0/transcript-forensics/releases/tag/v0.1.1)** — five skill zips, or use it as a plugin.
 
 ```bash
 npx transcript-forensics atlas --since 30d --out atlas.html
@@ -44,7 +44,8 @@ This one reads `~/.claude` (session logs and config). ccr-toolkit reads CCR's ow
 /plugin install transcript-forensics --marketplace acrot0/transcript-forensics
 ```
 
-That adds four skills: `read-sessions`, `audit-spend`, `audit-install`, `triage-failure`.
+That adds five skills: `read-sessions`, `audit-spend`, `audit-install`, `triage-failure`,
+`build-atlas`.
 
 **As a CLI** (Node.js ≥ 20):
 
@@ -58,18 +59,24 @@ No runtime dependencies — only `node:` built-ins.
 
 ## What it found on the machine it was built on
 
-Not marketing numbers: these are one developer's logs in November 2026, and they are why the
-tools exist. Reproduce them with `--json` on your own.
+Not marketing numbers: one developer's logs, 30-day window ending 2026-11-14, and they are why
+the tools exist. Reproduce them with `--json` on your own; the window moves, so re-run rather than
+trust this paragraph.
 
-- **5,668 turns** where the client requested one model and a different one answered. The UI shows
-  the answer, not the request, so the substitution is invisible unless you read the log.
-- **72 context compactions in 7 days**, dropping a cumulative **399.6M tokens** — every one of them
-  auto-triggered, none of them announced.
-- **101 upstream errors**, of which the largest group was a **429 quota message in Chinese** that
-  the client retried ten times. A turn that recovers looks identical to a clean one.
-- **93.2% cache hit rate** — the number that makes the difference between a $150 week and a $1,500
+- **11,490 turns** where the client requested one model and a different one answered, across 12
+  sessions. The UI shows the answer, not the request, so the substitution is invisible unless you
+  read the log.
+- **119 context compactions in 30 days**, dropping **19.2M tokens** — every one auto-triggered, none
+  announced. The log stores a *cumulative* counter per session, not a per-event delta; summing the
+  counter reports 437M. This paragraph used to carry that wrong number.
+- **106 upstream errors**, the largest group a **429 quota message in Chinese** retried up to ten
+  times. A turn that recovers looks identical to a clean one.
+- **93.3% cache hit rate** — the number that makes the difference between a $150 week and a $1,500
   one, and the number nobody has when they ask "why is this expensive".
-- **819 MB** of session logs in `~/.claude`, one file at 167 MB. Reading that is a streaming
+- **$3,562 across 34 sessions — and 24 of those 34 rest on a model id the client's own price table
+  does not know.** The report prints that parenthetical next to the figure. When *every* record is
+  unpriced it prints `UNRELIABLE` and calls the number a placeholder instead.
+- **821 MB** of session logs in `~/.claude`, one file at 167 MB. Reading that is a streaming
   problem, not a `readFileSync` problem.
 
 ## Commands
@@ -88,7 +95,7 @@ substitution or a 5xx; `cf-doctor` exits 1 only on a failure (warnings exit 0).
 ## Tested two ways, not one
 
 ```bash
-npx vitest run --pool=forks          # 169 unit tests: parsing, aggregation, the page
+npx vitest run --pool=forks          # unit tests: parsing, aggregation, the page
 claude plugin eval . --trust-plugin  # 7 trigger evals: does the right skill get picked?
 ```
 
@@ -144,7 +151,7 @@ credential is sitting in `settings.json` in plaintext.
 
 ## Pricing
 
-**Free.** MIT, no account, no telemetry, nothing gated. The CLI and all four skills are in this
+**Free.** MIT, no account, no telemetry, nothing gated. The CLI and all five skills are in this
 repository and will stay that way.
 
 | Skill | Marketplace listing |
@@ -157,6 +164,11 @@ repository and will stay that way.
 The $5 listing is the cheapest thing the checkout will process; there is no $1 tier. The same skill
 is in this repository for nothing either way — the listing buys the fact that someone reviewed it
 before you did. See [docs/pricing.md](docs/pricing.md) for the rule, and why it will not move.
+
+## Building and verifying a release
+
+[docs/release.md](docs/release.md) — the exact pack commands, the four things to check before
+uploading a zip, and how to compare a published asset's SHA-256 against the file you built.
 
 If it saves you an afternoon, the useful contribution is a reproducible bug report: the transcript
 format is undocumented and changes between Claude Code versions.

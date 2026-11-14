@@ -35,7 +35,7 @@ actually produced an answer, so a dead run fails instead of passing.
 
 - **Not a security review.** A passing suite does not vet the plugin's code.
 - **Not the report's correctness.** Trigger evals score *whether the skill was loaded*, not
-  whether the numbers it printed were right. That is what `test/` covers (169 unit tests).
+  whether the numbers it printed were right. That is what `test/` covers.
 - **Model-dependent.** The cases pin `model:` because an unreachable model makes every run
   time out, which used to score as a pass. Repin it if that model is unavailable.
 - **One run per case.** Model behaviour is nondeterministic; `--runs 3` is the honest default

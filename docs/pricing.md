@@ -32,6 +32,7 @@ Free listings need no payout method at all — no Stripe connection, no tax form
 | `read-sessions` | free | the headline capability; gating it would defeat the point |
 | `audit-install` | free | it fixes silent breakage; nobody should pay to find out their hooks are dead |
 | `triage-failure` | free | same — it is diagnostic, and diagnostics belong in everyone's hands |
+| `build-atlas` | free | it is the artifact people forward to a colleague; charging for a report you can regenerate would be absurd |
 | `audit-spend` | $5 (optional) | it is the one skill that touches money, and the $5 is a filter against casual installs, not a toll |
 
 If the paid listing is ever removed, the free listing of the same skill goes up in its place. The

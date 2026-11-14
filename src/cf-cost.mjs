@@ -22,7 +22,7 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import {
-  locateProjects, listSessions, readSession, windowToMs, parseArgs, fmtTokens,
+  locateProjects, listSessions, readSession, windowToMs, parseArgs, fmtTokens, dedupeResumed,
 } from './lib/transcript.mjs';
 
 /**
@@ -155,10 +155,13 @@ export async function main(argv = process.argv.slice(2)) {
   let prompts = 0;
 
   for (const s of sessions) {
-    const state = { cost: null, prompts: 0, sessionId: s.session };
+    const state = { cost: null, prompts: 0, sessionId: s.session, file: s.path, mtimeMs: s.mtimeMs };
     try {
       await readSession(s.path, async (r) => {
         if (r.timestamp && Date.parse(r.timestamp) < sinceMs) return;
+        // The record's own id beats the filename: a resumed session's new file keeps
+        // the original id inside its records.
+        if (!state.recordId && r.sessionId) state.recordId = r.sessionId;
         if (r.type === 'cost-state') state.cost = { totalCostUSD: r.totalCostUSD ?? null, modelUsage: r.modelUsage ?? null };
         if (r.type === 'user') {
           const c = r.message?.content;
@@ -167,11 +170,17 @@ export async function main(argv = process.argv.slice(2)) {
         }
       });
     } catch { continue; }
-    prompts += state.prompts;
+    if (state.recordId) state.sessionId = state.recordId;
     perSession.push(state);
   }
 
-  const summary = summarizeCost(perSession);
+  // Same rule as cf-analyze and cf-atlas. Without it this tool summed the same
+  // resumed session once per file and reported $3,566 while cf-analyze reported
+  // $3,562 for the same window — two authoritative-looking numbers, neither flagged.
+  const kept = dedupeResumed(perSession);
+  for (const s of kept) prompts += s.prompts;
+
+  const summary = summarizeCost(kept);
   const extra = { window: opts.since ?? '7d', prompts };
 
   if (opts.json) {

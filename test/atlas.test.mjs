@@ -75,6 +75,52 @@ describe('resumed sessions', () => {
   });
 });
 
+describe('forked session replays', () => {
+  /**
+   * The defect this pins: a fork writes a NEW session id but replays the parent's
+   * boundary records verbatim. Dedupe-by-id cannot see that, so the page counted
+   * each replay while the CLI deduped at the rollup layer — same 30-day window,
+   * 120 boundaries / 19.4M on the page against 119 / 19.2M in the terminal.
+   */
+  const err = (at, status = 429, message = 'exceed quota limit') => ({
+    type: 'system', subtype: 'api_error', timestamp: at,
+    error: { status, message: JSON.stringify({ error: { message } }) }, retryAttempt: 1,
+  });
+
+  it('should count a replayed boundary once even under a different session id', () => {
+    const at = '2026-11-14T10:00:00Z';
+    const parent = session('parent', [boundary(169880, 20278, 149602, at)]);
+    const fork = session('fork', [boundary(169880, 20278, 149602, at)]); // same record, new id
+    const atlas = buildAtlas([parent, fork], { window: '30d' });
+    expect(atlas.compactions).toHaveLength(1);
+    expect(atlas.totals.dropped).toBe(149602);
+  });
+
+  it('should keep two genuinely distinct boundaries on the same day', () => {
+    const a = session('a', [boundary(169880, 20278, 149602, '2026-11-14T10:00:00Z')]);
+    const b = session('b', [boundary(166837, 18774, 148063, '2026-11-14T11:00:00Z')]);
+    const atlas = buildAtlas([a, b], { window: '30d' });
+    expect(atlas.compactions).toHaveLength(2);
+    expect(atlas.totals.dropped).toBe(297665);
+  });
+
+  it('should count a replayed error once', () => {
+    const at = '2026-11-14T10:00:00Z';
+    const atlas = buildAtlas([session('a', [err(at)]), session('b', [err(at)])], { window: '30d' });
+    expect(atlas.errors).toHaveLength(1);
+    expect(atlas.errors[0].count).toBe(1);
+  });
+
+  it('should apply the same rule to the day strip', async () => {
+    const { dailyRows } = await import('../src/cf-atlas.mjs');
+    const at = '2026-11-14T10:00:00Z';
+    const rows = dailyRows([session('a', [boundary(169880, 20278, 149602, at)]), session('b', [boundary(169880, 20278, 149602, at)])], 0);
+    const day = rows.find((r) => r.day === '2026-11-14');
+    expect(day.compactions).toBe(1);
+    expect(day.dropped).toBe(149602);
+  });
+});
+
 describe('cost reliability', () => {
   it('should mark a total built entirely on unknown-model prices as a placeholder', () => {
     const s = session('s', [asst(), costState(5, true)]);

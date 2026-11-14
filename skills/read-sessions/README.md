@@ -14,8 +14,8 @@ Reads `~/.claude/projects/**/*.jsonl` (read-only) and reports:
 
 ## Why the description matters
 
-On a measured machine this is not a marginal feature: 5,668 turns were answered by a model the
-client had not requested, and 72 context compactions dropped 399.6M tokens in a week without a
+On a measured machine this is not a marginal feature: over 30 days, 11,490 turns were answered by
+a model the client had not requested, and 119 context compactions dropped 19.2M tokens without a
 single prompt. None of that is visible in the UI. A skill that cannot name the mechanism is
 worse than no skill, because it produces a confident wrong answer.
 
